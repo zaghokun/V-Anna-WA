@@ -1,6 +1,6 @@
 const setting = {
-    name: "SΛNSΞKΛI",
-    owner: "6285157729639"
+    name: "Zagho",
+    owner: "6285176750987"
 };
 
 export default setting;

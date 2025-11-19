@@ -8,6 +8,7 @@
   "license": "MIT",
   "type": "module",
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "any-ascii": "^0.3.2",
     "axios": "^1.13.1",
     "baileys": "^7.0.0-rc.6",

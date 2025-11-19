@@ -10,6 +10,7 @@ import Pino from "pino";
 import axios from "axios";
 
 import { msgFilter, color } from "./lib/utils.js";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 import setting from "./setting.js";
 moment.tz.setDefault("Asia/Jakarta").locale("id");
@@ -157,6 +158,27 @@ let msgHandler = async (upsert, sock, message) => {
         console.log(color("[ERROR]", "red"), color(moment(t * 1000).format("DD/MM/YY HH:mm:ss"), "yellow"), "Unregistered Command from", color(pushname));
       }
       break; 
+    case prefix + "gemini":
+    case prefix + "ai":
+      if (!q) return message.reply("Mau nanya apa? Contoh: .ai Buatkan pantun");
+
+      try{
+        await sock.sendMessage(message.chat, { react: { text: "🧠", key: message.key } });
+
+        const genAI = new GoogleGenerativeAI(setting.geminiApiKey)
+        const model = genAI.getGenerativeModel({model: "gemini-2.5-flash"})
+        
+        const prompt = "Jawablah pertanyaan berikut dalam Bahasa Indonesia yang ramah dan gaul: " + q;
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        const text = response.text();
+
+        await message.reply(text);
+      } catch(error){
+        console.error("Error Gemini: ", error);
+        await message.reply("Maaf, ada kesalahan saat menghubungi AI.");
+      }
+      break;
   }
   } catch (err) {
     console.log(color("[ERROR]", "red"), err);

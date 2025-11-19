@@ -115,8 +115,6 @@ let msgHandler = async (upsert, sock, message) => {
       return console.log(color("[SPAM]", "red"), color(moment(t * 1000).format("DD/MM/YY HH:mm:ss"), "yellow"), color(`${command} [${args.length}]`), "from", color(pushname), "in", color(groupName));
     }
      
-    if (!isCmd && !isGroup) return;
-    if (!isCmd && isGroup) return;
     if (isCmd && !isGroup) {
       console.log(color("[EXEC]"), color(moment(t * 1000).format("DD/MM/YY HH:mm:ss"), "yellow"), color(`${command} [${args.length}]`), "from", color(pushname));
     }
@@ -126,60 +124,90 @@ let msgHandler = async (upsert, sock, message) => {
     
     await sock.readMessages([message.key]) // Auto read
 
-    // fitur
-  switch (command) {
-    case prefix + "ping": case prefix + "test": case prefix + "tes":
-      await message.reply(`Pong! 🏓\n\nSpeed: ${Date.now() - t * 1000} ms`);
-      break;
-      case prefix + "say":
-    if (!q) return message.reply("Masukkan teks!");
-    await message.reply(q);
-    break;
-        case prefix + "resend": // contoh fitur download video atau gambar
-        if ((isImage || isQuotedImage) || (isVideo || isQuotedVideo)) {
-          const type = Object.keys(quotedMsg.message || quotedMsg)[0];
-            try {
-          const buffer = await downloadMediaMessage(msg, "buffer", {}, { Pino, reuploadRequest: sock.updateMediaMessage });
-          await sock.sendMessage(
-            message.chat,
-            { [type.includes("image") ? "image" : "video"]: buffer, caption: "*Success Resend*" },
-            { quoted: message, ephemeralExpiration: message.contextInfo.expiration }
-          );
-          } catch (err) {
-            console.log(err);
-            message.reply("ada yang error!");
-          }
-        } else {
-          message.reply(`Reply gambar atau video yang ingin diresend`);
+    if (isCmd) {
+        // -----------------------------------------------------------
+        // JIKA PESAN ADA PREFIX (misal: .ping, .say, .ai)
+        // -----------------------------------------------------------
+        switch (command) {
+            case prefix + "ping": case prefix + "test": case prefix + "tes":
+              await message.reply(`Pong! 🏓\n\nSpeed: ${Date.now() - t * 1000} ms`);
+              break;
+
+            case prefix + "say":
+              if (!q) return message.reply("Masukkan teks!");
+              await message.reply(q);
+              break;
+
+            case prefix + "resend": 
+              if ((isImage || isQuotedImage) || (isVideo || isQuotedVideo)) {
+                const type = Object.keys(quotedMsg.message || quotedMsg)[0];
+                  try {
+                const buffer = await downloadMediaMessage(msg, "buffer", {}, { Pino, reuploadRequest: sock.updateMediaMessage });
+                await sock.sendMessage(
+                  message.chat,
+                  { [type.includes("image") ? "image" : "video"]: buffer, caption: "*Success Resend*" },
+                  { quoted: message, ephemeralExpiration: message.contextInfo.expiration }
+                );
+                } catch (err) {
+                  console.log(err);
+                  message.reply("ada yang error!");
+                }
+              } else {
+                message.reply(`Reply gambar atau video yang ingin diresend`);
+              }
+              break;
+
+            case prefix + "gemini": // Tetap sediakan command manual
+            case prefix + "ai":
+              if (!q) return message.reply("Mau nanya apa?");
+              try {
+                 await sock.sendMessage(message.chat, { react: { text: "🧠", key: message.key } });
+                 const genAI = new GoogleGenerativeAI(setting.geminiApiKey);
+                 const model = genAI.getGenerativeModel({model: "gemini-1.5-flash"}); // FIX MODEL
+                 const prompt = "Jawablah pertanyaan berikut dalam Bahasa Indonesia: " + q;
+                 const result = await model.generateContent(prompt);
+                 const response = await result.response;
+                 const text = response.text();
+                 await message.reply(text);
+              } catch (e) { message.reply("Error AI"); }
+              break;
+
+            default:
+              if (isCmd) {
+                console.log(color("[ERROR]", "red"), color(moment(t * 1000).format("DD/MM/YY HH:mm:ss"), "yellow"), "Unregistered Command from", color(pushname));
+              }
+              break; 
         }
-        break;
-    default:
-      if (isCmd) {
-        console.log(color("[ERROR]", "red"), color(moment(t * 1000).format("DD/MM/YY HH:mm:ss"), "yellow"), "Unregistered Command from", color(pushname));
-      }
-      break; 
-    case prefix + "gemini":
-    case prefix + "ai":
-      if (!q) return message.reply("Mau nanya apa? Contoh: .ai Buatkan pantun");
 
-      try{
-        await sock.sendMessage(message.chat, { react: { text: "🧠", key: message.key } });
+    } else {
+        // -----------------------------------------------------------
+        // JIKA TIDAK ADA PREFIX (CHAT BIASA) -> AUTO AI
+        // -----------------------------------------------------------
+        if (!isGroup) { // Hanya di Private Chat
+            try {
+                // Reaksi berpikir
+                await sock.sendMessage(message.chat, { react: { text: "🧠", key: message.key } });
 
-        const genAI = new GoogleGenerativeAI(setting.geminiApiKey)
-        const model = genAI.getGenerativeModel({model: "gemini-2.5-flash"})
-        
-        const prompt = "Jawablah pertanyaan berikut dalam Bahasa Indonesia yang ramah dan gaul: " + q;
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        const text = response.text();
+                const genAI = new GoogleGenerativeAI(setting.geminiApiKey);
+                const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-        await message.reply(text);
-      } catch(error){
-        console.error("Error Gemini: ", error);
-        await message.reply("Maaf, ada kesalahan saat menghubungi AI.");
-      }
-      break;
-  }
+                // Prompt agar bot santai
+                const prompt = `Kamu adalah teman ngobrol yang asik di WhatsApp. Jawablah pesan ini dengan singkat, gaul, dan bahasa Indonesia: ${budy}`;
+
+                const result = await model.generateContent(prompt);
+                const response = await result.response;
+                const text = response.text();
+
+                await message.reply(text);
+            } catch (error) {
+                // Jangan log error terlalu heboh jika chat biasa gagal diproses
+                console.log("Ignored/Error AI Auto-Chat");
+            }
+        }
+    }
+    // ===============================================================
+
+
   } catch (err) {
     console.log(color("[ERROR]", "red"), err);
   }

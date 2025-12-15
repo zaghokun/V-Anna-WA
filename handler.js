@@ -13,6 +13,7 @@ import { msgFilter, color } from "./lib/utils.js";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 import setting from "./setting.js";
+import { error } from "qrcode-terminal";
 moment.tz.setDefault("Asia/Jakarta").locale("id");
 
 let msgHandler = async (upsert, sock, message) => {
@@ -163,13 +164,15 @@ let msgHandler = async (upsert, sock, message) => {
               try {
                  await sock.sendMessage(message.chat, { react: { text: "🧠", key: message.key } });
                  const genAI = new GoogleGenerativeAI(setting.geminiApiKey);
-                 const model = genAI.getGenerativeModel({model: "gemini-1.5-flash"}); // FIX MODEL
+                 const model = genAI.getGenerativeModel({model: "gemini-2.5-flash"}); // FIX MODEL
                  const prompt = "Jawablah pertanyaan berikut dalam Bahasa Indonesia: " + q;
                  const result = await model.generateContent(prompt);
                  const response = await result.response;
                  const text = response.text();
                  await message.reply(text);
-              } catch (e) { message.reply("Error AI"); }
+              } catch (error) {
+                console.log("AI Error:", error);
+              }
               break;
 
             default:
@@ -189,7 +192,7 @@ let msgHandler = async (upsert, sock, message) => {
                 await sock.sendMessage(message.chat, { react: { text: "🧠", key: message.key } });
 
                 const genAI = new GoogleGenerativeAI(setting.geminiApiKey);
-                const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+                const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
                 // Prompt agar bot santai
                 const prompt = `Kamu adalah teman ngobrol yang asik di WhatsApp. Jawablah pesan ini dengan singkat, gaul, dan bahasa Indonesia: ${budy}`;
@@ -201,7 +204,7 @@ let msgHandler = async (upsert, sock, message) => {
                 await message.reply(text);
             } catch (error) {
                 // Jangan log error terlalu heboh jika chat biasa gagal diproses
-                console.log("Ignored/Error AI Auto-Chat");
+                console.log("AI Error:", error);
             }
         }
     }

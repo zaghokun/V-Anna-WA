@@ -10,7 +10,7 @@ import Pino from "pino";
 import axios from "axios";
 
 import { msgFilter, color } from "./lib/utils.js";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { generateAIReply } from "./src/services/aiService.js";
 
 import setting from "./setting.js";
 import { error } from "qrcode-terminal";
@@ -162,16 +162,17 @@ let msgHandler = async (upsert, sock, message) => {
             case prefix + "ai":
               if (!q) return message.reply("Mau nanya apa?");
               try {
-                 await sock.sendMessage(message.chat, { react: { text: "🧠", key: message.key } });
-                 const genAI = new GoogleGenerativeAI(setting.geminiApiKey);
-                 const model = genAI.getGenerativeModel({model: "gemini-2.5-flash"}); // FIX MODEL
-                 const prompt = "Jawablah pertanyaan berikut dalam Bahasa Indonesia: " + q;
-                 const result = await model.generateContent(prompt);
-                 const response = await result.response;
-                 const text = response.text();
-                 await message.reply(text);
+                await sock.sendMessage(message.chat, { react: { text: "🧠", key: message.key } });
+                 
+                const replyText = await generateAIReply({
+                  mode: "default",
+                  message: budy
+                });
+
+                await message.reply(replyText);
+
               } catch (error) {
-                console.log("AI Error:", error);
+                console.log("Handler AI Error:", error.message);
               }
               break;
 
@@ -191,20 +192,14 @@ let msgHandler = async (upsert, sock, message) => {
                 // Reaksi berpikir
                 await sock.sendMessage(message.chat, { react: { text: "🧠", key: message.key } });
 
-                const genAI = new GoogleGenerativeAI(setting.geminiApiKey);
-                const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+                const replyText = await generateAIReply({
+                  mode: "default",
+                  message: budy
+                });
 
-                // Prompt agar bot santai
-                const prompt = `Kamu adalah teman ngobrol yang asik di WhatsApp. Jawablah pesan ini dengan singkat, gaul, dan bahasa Indonesia: ${budy}`;
-
-                const result = await model.generateContent(prompt);
-                const response = await result.response;
-                const text = response.text();
-
-                await message.reply(text);
+                await message.reply(replyText);
             } catch (error) {
-                // Jangan log error terlalu heboh jika chat biasa gagal diproses
-                console.log("AI Error:", error);
+                console.log("Handler AI Error:", error.message);
             }
         }
     }

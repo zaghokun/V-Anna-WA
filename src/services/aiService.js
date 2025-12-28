@@ -1,18 +1,32 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import setting from "../../setting.js";
-import { getPrompt } from "../prompts/promptFactory.js";
+import { getSystemInstruction } from "../prompts/promptFactory.js";
+import { getSession, addMessageToSession } from "../memory/sessionStore.js";
 
 const genAI = new GoogleGenerativeAI(setting.geminiApiKey);
 
-const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+const model = genAI.getGenerativeModel({ 
+    model: "gemini-2.5-flash",
+    systemInstruction: getSystemInstruction("default")
+});
 
-export async function generateAIReply({ mode = "default", message }){
+export async function generateAIReply({ userId, message, mode = "default" }){
     try{
-        const fullPrompt = getPrompt(mode, message);
 
-        const result = await model.generateContent(fullPrompt);
+        const history = getSession(userId);
+
+        const chat = model.startChat({
+            history: history,
+        });
+
+        const result = await chat.sendMessage(message);
         const response = await result.response;
-        return response.text();
+        const replyText = response.text();
+
+        addMessageToSession(userId, "user", message);
+        addMessageToSession(userId, "model", replyText);
+
+        return replyText;
 
     }catch (error) {
         console.error("AI Service Error:", error);

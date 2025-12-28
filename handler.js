@@ -193,6 +193,7 @@ let msgHandler = async (upsert, sock, message) => {
                 await sock.sendMessage(message.chat, { react: { text: "🧠", key: message.key } });
 
                 const replyText = await generateAIReply({
+                  userId: sender,
                   mode: "default",
                   message: budy
                 });

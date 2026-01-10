@@ -15,6 +15,8 @@ import { generateAIReply } from "./src/services/aiService.js";
 import setting from "./setting.js";
 import { error } from "qrcode-terminal";
 import { setUserMode } from "./src/memory/sessionStore.js";
+import { shouldCallAI } from "./src/utils/aiGate.js";
+
 moment.tz.setDefault("Asia/Jakarta").locale("id");
 
 let msgHandler = async (upsert, sock, message) => {
@@ -198,20 +200,18 @@ let msgHandler = async (upsert, sock, message) => {
         // -----------------------------------------------------------
         // JIKA TIDAK ADA PREFIX (CHAT BIASA) -> AUTO AI
         // -----------------------------------------------------------
-        if (!isGroup) { // Hanya di Private Chat
+        if (!isGroup && shouldCallAI(budy)) {
             try {
-                // Reaksi berpikir
                 await sock.sendMessage(message.chat, { react: { text: "🧠", key: message.key } });
 
-                const replyText = await generateAIReply({
-                  userId: sender,
-                  mode: "default",
-                  message: budy
+                const replyText = await generateAIReply({ 
+                    userId: sender,
+                    message: budy 
                 });
 
                 await message.reply(replyText);
-            } catch (error) {
-                console.log("Handler AI Error:", error.message);
+            } catch (e) {
+                console.log("Error Handler AI:", e);
             }
         }
     }

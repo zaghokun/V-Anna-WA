@@ -18,6 +18,7 @@ import "./handler.js";
 moment.tz.setDefault("Asia/Jakarta").locale("id");
 import chokidar from "chokidar";
 import { Messages } from "./lib/Messages.js";
+import fs from "fs";
 
 // Baileys
 const logger = Pino({

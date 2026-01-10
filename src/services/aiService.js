@@ -5,16 +5,16 @@ import { getSession, addMessageToSession, getUserMode } from "../memory/sessionS
 
 const genAI = new GoogleGenerativeAI(setting.geminiApiKey);
 
-export async function generateAIReply({ userId, message, mode = "default" }){
+export async function generateAIReply({ userId, message}){
     try{
-        const userPref = getUserMode(userId)
+        const userPref = getUserMode(userId);
+
+        const history = getSession(userId);
 
         const model = genAI.getGenerativeModel({ 
             model: "gemini-2.5-flash",
             systemInstruction: getSystemInstruction(userPref)
         });
-
-        const history = getSession(userId);
 
         const chat = model.startChat({
             history: history,
@@ -30,7 +30,11 @@ export async function generateAIReply({ userId, message, mode = "default" }){
         return replyText;
 
     }catch (error) {
-        console.error("AI Service Error:", error);
-        throw new Error("Gagal mendapatkan respon AI.");
+        console.error("❌ AI Service Error:", error);
+        if (error.message.includes("SAFETY")) {
+            return "Waduh, pertanyaan kamu terlalu berbahaya buat aku jawab 🙈";
+        }
+        
+        return "Maaf, koneksi ke otak AI lagi putus-nyambung. Coba tanya lagi ya!";
     }
 }

@@ -1,17 +1,18 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import setting from "../../setting.js";
 import { getSystemInstruction } from "../prompts/promptFactory.js";
-import { getSession, addMessageToSession } from "../memory/sessionStore.js";
+import { getSession, addMessageToSession, getUserMode } from "../memory/sessionStore.js";
 
 const genAI = new GoogleGenerativeAI(setting.geminiApiKey);
 
-const model = genAI.getGenerativeModel({ 
-    model: "gemini-2.5-flash",
-    systemInstruction: getSystemInstruction("default")
-});
-
 export async function generateAIReply({ userId, message, mode = "default" }){
     try{
+        const userPref = getUserMode(userId)
+
+        const model = genAI.getGenerativeModel({ 
+            model: "gemini-2.5-flash",
+            systemInstruction: getSystemInstruction(userPref)
+        });
 
         const history = getSession(userId);
 

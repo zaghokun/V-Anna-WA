@@ -16,6 +16,16 @@ export const addMessageToSession = (userId, role, content) => {
     }
 };
 
+const userSettings = new Map();
+
+export const setUserMode = (userId, mode) => {
+    userSettings.set(userId, mode);
+};
+
+export const getUserMode = (userId) => {
+    return userSettings.get(userId) || "auto";
+}
+
 export const clearSession = (userId) => {
     sessions.delete(userId);
 }

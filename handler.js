@@ -14,6 +14,7 @@ import { generateAIReply } from "./src/services/aiService.js";
 
 import setting from "./setting.js";
 import { error } from "qrcode-terminal";
+import { setUserMode } from "./src/memory/sessionStore.js";
 moment.tz.setDefault("Asia/Jakarta").locale("id");
 
 let msgHandler = async (upsert, sock, message) => {
@@ -175,7 +176,17 @@ let msgHandler = async (upsert, sock, message) => {
                 console.log("Handler AI Error:", error.message);
               }
               break;
+            
+            case prefix + "mode":
+              if (!q) return message.reply(`Gunakan: ${prefix}mode [auto/tutor/gaul/default]`);
 
+              const validModes = ["auto", "tutor", "gaul", "default"];
+              if (!validModes.includes(q.toLowerCase())) return message.reply("Mode tidak tersedia!");
+
+              setUserMode(sender, q.toLowerCase());
+              await message.reply(`Mode berhasil diubah ke: ${q.toLowerCase()}`);
+              break;
+              
             default:
               if (isCmd) {
                 console.log(color("[ERROR]", "red"), color(moment(t * 1000).format("DD/MM/YY HH:mm:ss"), "yellow"), "Unregistered Command from", color(pushname));

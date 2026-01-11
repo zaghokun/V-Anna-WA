@@ -38,3 +38,36 @@ export async function generateAIReply({ userId, message}){
         return "Maaf, koneksi ke otak AI lagi putus-nyambung. Coba tanya lagi ya!";
     }
 }
+
+export async function summarizeSession(userId) {
+    try{
+        const history = getSession(userId);
+
+        if(!history || history.length === 0){
+            return "Belum ada percakapan yang bisa diringkas";
+        }
+
+        const conversationText = history.map(msg => {
+            const role = msg.role === "user" ? "User" : "Bot";
+            const text = msg.parts[0].text;
+            return `${role}: ${text}`;
+        }).join("\n");
+
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+        const prompt = `
+        Berikut adalah transkrip percakapan antara User dan Bot (V-Anna).
+        Tugasmu: Buat ringkasan singkat (maksimal 3 poin utama) tentang apa yang dibicarakan.
+
+        TRANSKRIP:
+        ${conversationText}
+        
+        RINGKASAN:`;
+
+        const result = await model.generateContent(prompt);
+        return result.response.text();
+    } catch (error) {
+        console.error("Summary Error:", error);
+        return "Gagal membuat ringkasan. Mungkin chatnya kepanjangan.";
+    }
+}

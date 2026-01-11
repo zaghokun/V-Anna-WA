@@ -10,12 +10,14 @@ import Pino from "pino";
 import axios from "axios";
 
 import { msgFilter, color } from "./lib/utils.js";
-import { generateAIReply } from "./src/services/aiService.js";
+import { generateAIReply, summarizeSession } from "./src/services/aiService.js";
 
 import setting from "./setting.js";
 import { error } from "qrcode-terminal";
 import { setUserMode } from "./src/memory/sessionStore.js";
 import { shouldCallAI } from "./src/utils/aiGate.js";
+import { checkRateLimit } from "./src/utils/rateLimit.js";
+import { clearSession } from "./src/memory/sessionStore.js";
 
 moment.tz.setDefault("Asia/Jakarta").locale("id");
 
@@ -194,6 +196,17 @@ let msgHandler = async (upsert, sock, message) => {
                 console.log(color("[ERROR]", "red"), color(moment(t * 1000).format("DD/MM/YY HH:mm:ss"), "yellow"), "Unregistered Command from", color(pushname));
               }
               break; 
+            case prefix + "reset":
+              clearSession(sender);
+              await message.reply("♻️ Sesi percakapan berhasil di-reset. Ingatan bot tentangmu sudah dihapus.");
+              break;
+
+            case prefix + "summary":
+            case prefix + "ringkas":
+                await message.reply("Sedang membaca riwayat chat... 📝");
+                const summary = await summarizeSession(sender);
+                await message.reply(`📄 *RINGKASAN PERCAKAPAN:*\n\n${summary}`);
+                break;
         }
 
     } else {
@@ -201,15 +214,22 @@ let msgHandler = async (upsert, sock, message) => {
         // JIKA TIDAK ADA PREFIX (CHAT BIASA) -> AUTO AI
         // -----------------------------------------------------------
         if (!isGroup && shouldCallAI(budy)) {
-            try {
-                await sock.sendMessage(message.chat, { react: { text: "🧠", key: message.key } });
+          
+          const rateLimit = checkRateLimit(sender);
+          if (!rateLimit.allowed){
+            await message.reply(`⛔ Eits, pelan-pelan! Kamu ngirim chat terlalu cepat. Tunggu ${rateLimit.timeLeft} detik lagi ya.`);
+            return;
+          }
 
-                const replyText = await generateAIReply({ 
-                    userId: sender,
-                    message: budy 
-                });
+          try {
+              await sock.sendMessage(message.chat, { react: { text: "🧠", key: message.key } });
 
-                await message.reply(replyText);
+              const replyText = await generateAIReply({ 
+                  userId: sender,
+                  message: budy 
+              });
+
+              await message.reply(replyText);
             } catch (e) {
                 console.log("Error Handler AI:", e);
             }

@@ -1,7 +1,7 @@
 export const shouldCallAI = (text) => {
     if (!text) return false;
 
-    const cleanText = text.trim().towLowerCase();
+    const cleanText = text.trim().toLowerCase();
 
     if (cleanText.length < 3) return false;
 
